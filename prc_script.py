@@ -16,6 +16,9 @@ def get_last_pages(pages):
   navigation_page_links = soup.find('ul', 'b-pagination-list')
   final_page_links = navigation_page_links.findAll('a', 'b-pagination-item')
   final_page_number = int(final_page_links[-1].contents[0])
+  if pages >= final_page_number:
+    print "Thread does not contain " + str(pages) + " pages. Will perfrom search on all " + str(final_page_number) + " pages of the thread instead."
+    pages = final_page_number
   final_pages = [(url + '?page=' + str(index)) for index in range(final_page_number + 1 - pages, final_page_number + 1)]
   #print final_pages
   #return url + '?page=' + str(final_page_number - 1), url + '?page=' + str(final_page_number)
@@ -83,11 +86,12 @@ def write_post_to_file(poem_comment_links, output_file_name):
 
   Thank you and Happy voting!"""
   
-  #try:
-  #  with open(
-  output_file = open(output_file_name, 'w')
-  output_file.write(first_part + "".join(poem_comment_links).encode('utf8') + last_part)
-  output_file.close()
+  try:
+    with open(output_file_name, 'w') as output_file:
+      output_file.write(first_part + "".join(poem_comment_links).encode('utf8') + last_part)
+      output_file.close()
+  except IOError as e:
+      print "I/O error({0}): {1}".format(e.errno, e.strerror)
 
 def arg_parse():
   """
@@ -95,11 +99,11 @@ def arg_parse():
   currently returning a timedelta of 1 to 3 weeks for use returning the right amount posts
   """
   parser = argparse.ArgumentParser()
-  parser.add_argument("-w", "--weeks", type=int, choices=[1,2,3], default=1, help="Pull posts from X num weeks back")
-  parser.add_argument("-p", "--pages", type=int, choices=[1,2,3,4,5], default=2, help="Search X pages back for valid posts")
+  parser.add_argument("-w", "--weeks", type=int, default=1, choices=[1,2,3], help="Pull posts from X num weeks back")
+  parser.add_argument("-p", "--pages", type=int, default=2, choices=[1,2,3], help="Search X pages back for valid posts")
   parser.add_argument("-o", "--output", type=str, default="PRC_Post.txt", help="Write post text to file indicated here")
   args = parser.parse_args()
-  return timedelta(days=args.weeks * 7), args.pages, args.output  
+  return timedelta(days=args.weeks * 7), args.pages, args.output
 
 if __name__ == "__main__":
   # Parse Parameters
