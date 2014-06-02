@@ -6,7 +6,7 @@ import urllib2
 from datetime import date, timedelta, datetime
 import argparse
 
-def get_last_pages():
+def get_last_pages(pages):
   """
   Return array of urls for the last two pages of thread pointed to by url
   """
@@ -16,7 +16,10 @@ def get_last_pages():
   navigation_page_links = soup.find('ul', 'b-pagination-list')
   final_page_links = navigation_page_links.findAll('a', 'b-pagination-item')
   final_page_number = int(final_page_links[-1].contents[0])
-  return url + '?page=' + str(final_page_number - 1), url + '?page=' + str(final_page_number)
+  final_pages = [(url + '?page=' + str(index)) for index in range(final_page_number + 1 - pages, final_page_number + 1)]
+  #print final_pages
+  #return url + '?page=' + str(final_page_number - 1), url + '?page=' + str(final_page_number)
+  return final_pages
 
 def get_posted_poems(final_pages, time_frame):
   """
@@ -56,7 +59,7 @@ def get_posted_poems(final_pages, time_frame):
         poem_comment_links.append('[URL="' + comment_link + '"]' + poem_title + '[/URL] by ' + commenter_name + '\n')
   return poem_comment_links
 
-def write_post_to_file(poem_comment_links):
+def write_post_to_file(poem_comment_links, output_file_name):
   """
   Write first_part, poem_comment_links, then last part to "PRC_Post.txt"
   """
@@ -80,7 +83,9 @@ def write_post_to_file(poem_comment_links):
 
   Thank you and Happy voting!"""
   
-  output_file = open('PRC_Post.txt', 'w')
+  #try:
+  #  with open(
+  output_file = open(output_file_name, 'w')
   output_file.write(first_part + "".join(poem_comment_links).encode('utf8') + last_part)
   output_file.close()
 
@@ -92,17 +97,19 @@ def arg_parse():
   parser = argparse.ArgumentParser()
   parser.add_argument("-w", "--weeks", type=int, choices=[1,2,3], default=1, help="Pull posts from X num weeks back")
   parser.add_argument("-p", "--pages", type=int, choices=[1,2,3,4,5], default=2, help="Search X pages back for valid posts")
-  parser.add_argument("-o", "--output", type=str, default="PRC_Post.txt", help="Write text to post to file indicated here")
+  parser.add_argument("-o", "--output", type=str, default="PRC_Post.txt", help="Write post text to file indicated here")
   args = parser.parse_args()
-  return timedelta(days=args.weeks * 7), args.pages, args.output
-  
+  return timedelta(days=args.weeks * 7), args.pages, args.output  
+
 if __name__ == "__main__":
   # Parse Parameters
-  time_frame = arg_parse()
-  print "Gathering Posts from " + str(time_frame[0].days) + " days ago."
+  parameters = arg_parse()
+  print "Gathering Posts from " + str(parameters[0].days) + " days ago."
+  print "Searching last " + str(parameters[1]) + " pages of thread."
+  print "Outputting to file: " + parameters[2]
   # Get the final two pages of script
-  final_pages = get_last_pages()
+  final_pages = get_last_pages(parameters[1])
   # store each posts link, poem_title, and commenters name in array poem_comment_links
-  poem_comment_links = get_posted_poems(final_pages, time_frame[0])
+  poem_comment_links = get_posted_poems(final_pages, parameters[0])
   # write posts from poem_comment_links and other needed text for post to "PRC_Post.txt"
-  write_post_to_file(poem_comment_links)
+  write_post_to_file(poem_comment_links, parameters[2])
