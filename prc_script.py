@@ -2,13 +2,15 @@
 
 # using beautifulsoup4 (4.3.2) for this script
 from bs4 import BeautifulSoup
-import urllib2
 from datetime import date, timedelta, datetime
+import urllib2
 import argparse
+import sys
 
 def get_last_pages(pages):
   """
-  Return array of urls for the last two pages of thread pointed to by url
+  Return array of urls to the thread pages to be searched.
+  pages is an integer, representing the number of pages back to search.
   """
   url = 'http://www.mtgsalvation.com/forums/creativity/personal-writing/494511-poetry-running-contest-submission-thread'
   content = urllib2.urlopen(url).read()
@@ -20,22 +22,19 @@ def get_last_pages(pages):
     print "Thread does not contain " + str(pages) + " pages. Will perfrom search on all " + str(final_page_number) + " pages of the thread instead."
     pages = final_page_number
   final_pages = [(url + '?page=' + str(index)) for index in range(final_page_number + 1 - pages, final_page_number + 1)]
-  #print final_pages
-  #return url + '?page=' + str(final_page_number - 1), url + '?page=' + str(final_page_number)
   return final_pages
 
 def get_posted_poems(final_pages, time_frame):
   """
   Return the link, poem title, and commenters name for each post
   """
-  # poem_comment_links will contain an array with each element having the form: '[URL="' + comment_link + '"]' + poem_title + '[/URL] by ' + commenter_name + '\n'
+  # poem_comment_links array, each element will have the form: '[URL="' + comment_link + '"]' + poem_title + '[/URL] by ' + commenter_name + '\n'
   poem_comment_links = []
   present = datetime.now()
   for page in final_pages:
     content = urllib2.urlopen(page).read()
     soup = BeautifulSoup(content)
     thread_comments = soup.findAll('li', 'p-comments', 'p-comments-b')
-    
 
     for comment in thread_comments:
       # Site recently changed something... now there is some extra html for adds or something that breaks this
@@ -44,22 +43,21 @@ def get_posted_poems(final_pages, time_frame):
       # <li class="p-comments p-comments-b"><section class="ad-container"><div class="ad-bin"><div class="ad-placement"></div></div></section></li>
       # need to change the "thread_comments = soup.findAll('li', 'p-comments', 'p-comments-b')" line to only grab the correct info to fix this
       try:
-        comment_link = get_post_link(comment)
-      except TypeError:
+        post_date = get_post_date(comment)
+      except:
         continue
         
-      commenter_name = get_poster_name(comment)
-      
-      post_date = get_post_date(comment)
-      
-      poem_title = get_poem_title(comment)
-      
-      # if the 'post_date' is from within the time frame given, append the post to "poem_comment_links" array
       if post_date >= (present - time_frame):
+        comment_link = get_post_link(comment)
+        commenter_name = get_poster_name(comment)
+        poem_title = get_poem_title(comment)
         poem_comment_links.append('[URL="' + comment_link + '"]' + poem_title + '[/URL] by ' + commenter_name + '\n')
   return poem_comment_links
   
 def get_post_link(comment):
+  """
+  Return the link to the comment passed in to this function.
+  """
   comment_link = comment.find('a', 'j-comment-link')['href']
   return comment_link
 
@@ -78,7 +76,7 @@ def get_poem_title(comment):
   if poem_title == None:
     poem_title = comment.find('div', {'itemprop' : 'text'}).contents[0].text
     if poem_title == None:
-      poem_title = "None"
+      poem_title = "Error: Could Not Figure Out A Title"
   poem_title = poem_title.strip()
   return poem_title
 
@@ -112,6 +110,7 @@ def write_post_to_file(poem_comment_links, output_file_name):
       output_file.close()
   except IOError as e:
       print "I/O error({0}): {1}".format(e.errno, e.strerror)
+      sys.exit()
 
 def arg_parse():
   """
@@ -126,6 +125,9 @@ def arg_parse():
   return timedelta(days=args.weeks * 7), args.pages, args.output
 
 def print_parameters(parameters):
+  """
+  Print out parameters to be used in the script.
+  """
   print "Gathering Posts from " + str(parameters[0].days) + " days ago."
   print "Searching last " + str(parameters[1]) + " pages of thread."
   print "Outputting to file: " + parameters[2]
