@@ -44,23 +44,43 @@ def get_posted_poems(final_pages, time_frame):
       # <li class="p-comments p-comments-b"><section class="ad-container"><div class="ad-bin"><div class="ad-placement"></div></div></section></li>
       # need to change the "thread_comments = soup.findAll('li', 'p-comments', 'p-comments-b')" line to only grab the correct info to fix this
       try:
-        comment_link = comment.find('a', 'j-comment-link')['href']
+        comment_link = get_post_link(comment)
       except TypeError:
         continue
         
-      commenter_name = comment.find('span', {'itemprop' : 'name'}).string
-      #post date stuff
-      post_date = comment.find('span', {'itemprop' : 'dateCreated'}).string
-      post_date = post_date.split(" ")[0]
-      post_date = datetime.strptime(post_date, "%m/%d/%Y")
+      commenter_name = get_poster_name(comment)
       
-      poem_title = comment.find('div', {'itemprop' : 'text'}).contents[0].string
-      if poem_title == None:
-        poem_title = "None"
+      post_date = get_post_date(comment)
+      
+      poem_title = get_poem_title(comment)
+      
       # if the 'post_date' is from within the time frame given, append the post to "poem_comment_links" array
       if post_date >= (present - time_frame):
         poem_comment_links.append('[URL="' + comment_link + '"]' + poem_title + '[/URL] by ' + commenter_name + '\n')
   return poem_comment_links
+  
+def get_post_link(comment):
+  comment_link = comment.find('a', 'j-comment-link')['href']
+  return comment_link
+
+def get_post_date(comment):
+  post_date = comment.find('span', {'itemprop' : 'dateCreated'}).string
+  post_date = post_date.split(" ")[0]
+  post_date = datetime.strptime(post_date, "%m/%d/%Y")
+  return post_date
+  
+def get_poster_name(comment):
+  commenter_name = comment.find('span', {'itemprop' : 'name'}).string
+  return commenter_name
+  
+def get_poem_title(comment):
+  poem_title = comment.find('div', {'itemprop' : 'text'}).contents[0].string
+  if poem_title == None:
+    poem_title = comment.find('div', {'itemprop' : 'text'}).contents[0].text
+    if poem_title == None:
+      poem_title = "None"
+  poem_title = poem_title.strip()
+  return poem_title
 
 def write_post_to_file(poem_comment_links, output_file_name):
   """
@@ -105,12 +125,15 @@ def arg_parse():
   args = parser.parse_args()
   return timedelta(days=args.weeks * 7), args.pages, args.output
 
-if __name__ == "__main__":
-  # Parse Parameters
-  parameters = arg_parse()
+def print_parameters(parameters):
   print "Gathering Posts from " + str(parameters[0].days) + " days ago."
   print "Searching last " + str(parameters[1]) + " pages of thread."
   print "Outputting to file: " + parameters[2]
+  
+if __name__ == "__main__":
+  # Parse Parameters
+  parameters = arg_parse()
+  print_parameters(parameters)
   # Get the final two pages of script
   final_pages = get_last_pages(parameters[1])
   # store each posts link, poem_title, and commenters name in array poem_comment_links
