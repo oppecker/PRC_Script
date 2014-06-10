@@ -13,8 +13,7 @@ def get_last_pages(pages):
   pages is an integer, representing the number of pages back to search.
   """
   url = 'http://www.mtgsalvation.com/forums/creativity/personal-writing/494511-poetry-running-contest-submission-thread'
-  content = urllib2.urlopen(url).read()
-  soup = BeautifulSoup(content)
+  soup = get_url_contents(url)
   navigation_page_links = soup.find('ul', 'b-pagination-list')
   final_page_links = navigation_page_links.findAll('a', 'b-pagination-item')
   final_page_number = int(final_page_links[-1].contents[0])
@@ -24,6 +23,15 @@ def get_last_pages(pages):
   final_pages = [(url + '?page=' + str(index)) for index in range(final_page_number + 1 - pages, final_page_number + 1)]
   return final_pages
 
+def get_url_contents(url):
+  """
+  Accepts a url, uses open urllib2 to read the html contents of the page.
+  returns the contents as a beautiful soup object for easy parsing.
+  """
+  content = urllib2.urlopen(url).read()
+  soup = BeautifulSoup(content)
+  return soup
+  
 def get_posted_poems(final_pages, time_frame):
   """
   Return the link, poem title, and commenters name for each post
@@ -32,8 +40,7 @@ def get_posted_poems(final_pages, time_frame):
   poem_comment_links = []
   present = datetime.now()
   for page in final_pages:
-    content = urllib2.urlopen(page).read()
-    soup = BeautifulSoup(content)
+    soup = get_url_contents(page)
     thread_comments = soup.findAll('li', 'p-comments', 'p-comments-b')
 
     for comment in thread_comments:
