@@ -106,6 +106,16 @@ def arg_parse():
     parser.error('Need to send a Post Title as a parameter')
   return args.post_title
   
+#Create a function to return all the info as a dict possibly? maybe just tuple to a bunch of variables?
+def get_post_creation_variables():
+  url = "http://www.mtgsalvation.com/forums/creativity/personal-writing"
+  login_info = get_login_info()
+  username = login_info[0]
+  password = login_info[1]
+  post_title = arg_parse()
+  post_text = get_post_text()
+  return url, login_info, username, password, post_title, post_text
+  
 if __name__ == "__main__":
   url = "http://www.mtgsalvation.com/forums/creativity/personal-writing"
   login_info = get_login_info()
@@ -113,7 +123,6 @@ if __name__ == "__main__":
   password = login_info[1]
   post_title = arg_parse()
   post_text = get_post_text()
-  print post_title
 
   driver = open_webpage(url)
   driver = login_to_page(driver, username, password)
