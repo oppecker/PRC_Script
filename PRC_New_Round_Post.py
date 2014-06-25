@@ -6,23 +6,17 @@ from datetime import date, timedelta, datetime
 import urllib2
 import argparse
 import sys
+import re
+from PRC_Forum_Tools import PRCForumTools
 
-class PrcScript():
+class PRCNewRoundPost(PRCForumTools):
   def __init__(self):
-    """
-    Initialize PrcScript variables
-    self.days     posts less then <self.days> days old will be used
-    self.pages    posts from <self.pages> thread pages back will be considered
-    self.output   post text output will be written to file <self.output>
-    self.url      url of thread to get post information from
-    """
     self.days, self.pages, self.output = self.parse_parameters()
-    self.url = 'http://www.mtgsalvation.com/forums/creativity/personal-writing/494511-poetry-running-contest-submission-thread'
+    super(PRCNewRoundPost, self).__init__()
     print "Gathering Posts from up to < " + str(self.days.days) + " > days ago."
     print "Searching through last < " + str(self.pages) + " > pages of thread."
     print "Outputting post text to file: < " + self.output + " >"
-
-        
+    
   def parse_parameters(self):
     """
     Script can accept the parameters:
@@ -46,56 +40,13 @@ class PrcScript():
     If the user has requested searching more pages then the thread is long (through the -p or -pages parameter) then self.pages is just set to the length of the thread.
     Returns array of links to the thread pages that to search though.
     """
-    soup = self.get_url_contents(self.url)
+    soup = self.get_url_contents(self.submission_thread_url)
     page_links = soup.find('ul', 'b-pagination-list').findAll('a', 'b-pagination-item')
     final_page_number = int(page_links[-1].contents[0])
     if self.pages >= final_page_number:
       print "Thread does not contain " + str(pages) + " pages. Will perform search on all " + str(final_page_number) + " pages of the thread instead."
       self.pages = final_page_number
-    return [(self.url + '?page=' + str(index)) for index in range(final_page_number + 1 - self.pages, final_page_number + 1)]
-    
-  def get_url_contents(self, page_url):
-    """
-    Opens and reads the contents of page_url
-    Creates and returns a BeautifulSoup object using the contents of page_url
-    """
-    content = urllib2.urlopen(page_url).read()
-    return BeautifulSoup(content)
-
-  def get_post_date(self, post):
-    """
-    Using the post passed in, find the date of the post (format mm/dd/yyyy)
-    Return a datetime object for the date the post was made.
-    """
-    post_date = post.find('span', {'itemprop' : 'dateCreated'}).string.split(" ")[0]
-    return datetime.strptime(post_date, "%m/%d/%Y")
-    
-  def get_post_link(self, post):
-    """
-    Return the link to the post passed in to the function.
-    """
-    return post.find('a', 'j-comment-link')['href']
-    
-  def get_poster_name(self, post):
-    """
-    Return the name of the poster for the post passed in to the function.
-    """
-    return post.find('span', {'itemprop' : 'name'}).string
-    
-  def get_post_title(self, post):
-    """
-    Find the posts first line of text.
-    The if statements check for the first line a few different ways. This is to account for the different ways people seem to format their posts.
-    If a first line can not be determined, it is set as "Error: Could Not Figure Out A Title", so that it can be manually figured out.
-    Return the first line of text, striped of any formatting that might be present.
-    """
-    post_title = post.find('div', {'itemprop' : 'text'}).contents[0].string
-    if post_title == None:
-      post_title = post.find('div', {'itemprop' : 'text'}).contents[0].text
-      if post_title == None:
-        post_title = "Error: Could Not Figure Out A Title"
-
-    return post_title.strip()
+    return [(self.submission_thread_url + '?page=' + str(index)) for index in range(final_page_number + 1 - self.pages, final_page_number + 1)]
     
   def get_and_format_post_links(self, thread_pages):
     """
@@ -135,30 +86,32 @@ class PrcScript():
     
   def write_post_to_file(self, post_links):
     """
+    Writing post to text file is for debugging purposes.
     Import the strings first_post_section, and final_post_section from prc_post_vars.py. These are in a separate file because they are ugly and should be kept hidden.
     post_links is an array of all the formatted links to the submitted poems.
     The the text to post will be written out to file self.output (defaults to "PRC_Post.txt").
     The text written to the output file in this order: first_post_section, post_links, final_post_section.
     If some I/O error happens, it is written to std output.
     """
-    from prc_post_vars import first_post_section, final_post_section
+    from prc_script_vars import first_post_section, final_post_section
+    post_text = first_post_section + "".join(post_links).encode('utf8') + final_post_section
+    post_text = unicode(post_text, errors="ignore")
+    self.write_post_to_output(post_text)
+    return post_text
     
-    try:
-      with open(self.output, 'w') as output_file:
-        output_file.write(first_post_section + "".join(post_links).encode('utf8') + final_post_section)
-        output_file.close()
-    except IOError as e:
-        print "I/O error({0}): {1}".format(e.errno, e.strerror)
-        sys.exit()
-
   def main(self):
     """
     Runs PrcScript class functions to create text to post for new PRC round.
     """
     thread_pages = self.get_thread_pages()
     post_links = self.get_and_format_post_links(thread_pages)
-    self.write_post_to_file(post_links)
-
+    post_text = self.write_post_to_file(post_links)
+    #print post_text
+    #post_text = self.get_post_text()
+    #post_text = unicode(post_text, errors="ignore")
+    #print post_text
+    self.create_and_submit_new_round_post(post_text)
+    
 if __name__ == "__main__":
-  run_script = PrcScript()
+  run_script = PRCNewRoundPost()
   run_script.main()
